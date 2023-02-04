@@ -100,7 +100,6 @@ ui <- fluidPage(
 
             hr(),
             
-            
             checkboxInput(inputId = "show_data",
                           label = "Show data table",
                           value = TRUE),
@@ -133,8 +132,9 @@ server <- function(input, output) {
       ggplot(data = pldata, aes_string(x = "Squad", y = input$y)) +
         geom_bar(stat="identity", width = .9, fill="#FF9999", colour="blue") +
         labs(x = toTitleCase(str_replace_all(input$x, "_", " ")),
-             y = toTitleCase(str_replace_all(input$y, "_", " "))) +
-        theme(axis.text.x = element_text(angle=65, vjust=0.6))
+             y = toTitleCase(str_replace_all(input$y, "_", " ")),
+             title = "Bar Plot of Selected Statistic by Team" )+
+        theme(axis.text.x = element_text(angle=65, vjust=0.6, size = 14))
       
     })
     
@@ -143,10 +143,12 @@ server <- function(input, output) {
       ggplot(data = pldata, aes_string(x = input$b, y = input$a,
                                        color = input$z)) +
         geom_point(size = input$size) +
+        ggtitle("Scatterplot of Selected Statistics - Default: Goals X Age") +
         scale_color_viridis(discrete = FALSE, option = "D")+
         scale_fill_viridis(discrete = FALSE) +
         theme_minimal() +
-        theme(legend.position = "bottom")
+        theme(legend.position = "bottom", axis.text = element_text(size = 14),
+              legend.text = element_text(size = 14))
 #source code for color palette
 #https://www.datanovia.com/en/blog/top-r-color-palettes-to-know-for-great-
       #data-visualization/
@@ -162,7 +164,7 @@ server <- function(input, output) {
                      catMethod = "logFixedWidth",
                      colourPalette = "heat", addLegend = FALSE,
                      borderCol = "Black",
-                     mapTitle = "Heat Map of Player Nationality",
+                     mapTitle = "Heat Map of Premier League Player Nationality",
                      oceanCol = NA, aspect = 1,
                      missingCountryCol = "grey", add = FALSE,
                      nameColumnToHatch = "",
@@ -177,6 +179,7 @@ server <- function(input, output) {
                       options = list(pageLength = 50), 
                       rownames = FALSE)
       })
+    
     
      output$downloadData <- downloadHandler(
        filename = function() {
