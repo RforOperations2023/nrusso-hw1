@@ -7,7 +7,7 @@ library(tools)
 library(forcats)
 library("viridis")
 library(rworldmap)
-pldata <- read.csv("plstats.csv") #I realized it needed to be in the same file as the app
+pldata <- read.csv("plstats.csv") 
 
 aggregate_tbl <- pldata %>% group_by(Squad) %>% 
   summarise(Gls =sum(Gls),
@@ -21,17 +21,20 @@ pldata$Nation <- as.factor(pldata$Nation)
 table(pldata$Nation)
 df_countrycounts <- data.frame(table(pldata$Nation))
 
-datajoin <- joinCountryData2Map(dF = df_countrycounts, joinCode = "ISO3", nameJoinColumn = "Var1", suggestForFailedCodes = TRUE,
-                                mapResolution = "coarse", projection = NA, verbose = FALSE)
-
-
+datajoin <- joinCountryData2Map(dF = df_countrycounts, joinCode = "ISO3",
+                                nameJoinColumn = "Var1",
+                                suggestForFailedCodes = TRUE,
+                                mapResolution = "coarse",
+                                projection = NA, verbose = FALSE)
 
 
 # Convert tibble to df
 pldata_df2 <- aggregate_tbl %>% as.data.frame()
 
-# Define UI for application that draws a histogram
+# Define UI for application 
 ui <- fluidPage(
+  
+    downloadLink('Downloaddata', 'Download'),
   
     theme = shinythemes::shinytheme("sandstone"),
 
@@ -41,6 +44,8 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
+          h5("This menu is for the bar plot"),
+          
             selectInput(inputId = "y", 
                         label = "Y-axis:",
                         choices = c("Goals" = "Gls", 
@@ -49,13 +54,11 @@ ui <- fluidPage(
                                     "Red Cards" = "CrdR"), 
                         selected = "Gls"),
             
-            selectInput(inputId = "x", 
-                        label = "X-axis:",
-                        choices = c("Team" = "Squad"), 
-                        selected = "Squad"),
             
             hr(),
             
+          h5("This menu is for the scatterplot"),
+          
             selectInput(inputId = "a", 
                         label = "Y-axis:",
                         choices = c("Age" = "AgeFixed", 
@@ -89,6 +92,12 @@ ui <- fluidPage(
                                     "Expected Goals & Assists" = "xAG"),
                         selected = "Age"),
             
+            
+            sliderInput(inputId = "size", 
+                        label = "Size:", 
+                        min = 0, max = 5, 
+                        value = 2),
+
             hr(),
             
             
@@ -102,13 +111,17 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
+          
            plotOutput("SquadStats"),
            
            plotOutput("PlayerStats"),
            
            plotOutput("PlayerNationality"),
            
-           DT::dataTableOutput(outputId = "StatTable")
+           DT::dataTableOutput(outputId = "StatTable"),
+           
+           downloadButton(outputId = 'downloadData', label = "Download data",
+                          class = NULL)
         )
     )
 )
@@ -117,7 +130,7 @@ server <- function(input, output) {
 
     output$SquadStats <- renderPlot({
       
-      ggplot(data = pldata, aes_string(x = input$x, y = input$y)) +
+      ggplot(data = pldata, aes_string(x = "Squad", y = input$y)) +
         geom_bar(stat="identity", width = .9, fill="#FF9999", colour="blue") +
         labs(x = toTitleCase(str_replace_all(input$x, "_", " ")),
              y = toTitleCase(str_replace_all(input$y, "_", " "))) +
@@ -127,34 +140,52 @@ server <- function(input, output) {
     
     output$PlayerStats <- renderPlot({
       
-      ggplot(data = pldata, aes_string(x = input$b, y = input$a, color = input$z)) +
-        geom_point(size = 4) +
+      ggplot(data = pldata, aes_string(x = input$b, y = input$a,
+                                       color = input$z)) +
+        geom_point(size = input$size) +
         scale_color_viridis(discrete = FALSE, option = "D")+
         scale_fill_viridis(discrete = FALSE) +
         theme_minimal() +
         theme(legend.position = "bottom")
-      #source code for color palette https://www.datanovia.com/en/blog/top-r-color-palettes-to-know-for-great-data-visualization/
+#source code for color palette
+#https://www.datanovia.com/en/blog/top-r-color-palettes-to-know-for-great-
+      #data-visualization/
       
       
     })
     
     output$PlayerNationality <- renderPlot({
       
-      mapCountryData(mapToPlot = datajoin, nameColumnToPlot = "Freq", numCats = 10,
-                     xlim = NA, ylim = NA, mapRegion = "world", catMethod = "logFixedWidth",
-                     colourPalette = "heat", addLegend = FALSE, borderCol = "Black",
-                     mapTitle = "Heat Map of Player Nationality", oceanCol = NA, aspect = 1,
-                     missingCountryCol = "grey", add = FALSE, nameColumnToHatch = "",
+      mapCountryData(mapToPlot = datajoin, nameColumnToPlot = "Freq",
+                     numCats = 10,
+                     xlim = NA, ylim = NA, mapRegion = "world",
+                     catMethod = "logFixedWidth",
+                     colourPalette = "heat", addLegend = FALSE,
+                     borderCol = "Black",
+                     mapTitle = "Heat Map of Player Nationality",
+                     oceanCol = NA, aspect = 1,
+                     missingCountryCol = "grey", add = FALSE,
+                     nameColumnToHatch = "",
                      lwd = 0.5)
       
     })
     
     output$StatTable <- DT::renderDataTable(
       if(input$show_data){
-        DT::datatable(data = pldata[,c( "Player", "Squad", "Gls", "Nation", "xG")], 
+        DT::datatable(data = pldata[,c( "Player", "Squad", "Gls",
+                                        "Nation", "xG")], 
                       options = list(pageLength = 50), 
                       rownames = FALSE)
       })
+    
+     output$downloadData <- downloadHandler(
+       filename = function() {
+         paste('pldata', Sys.Date(), '.csv')
+       },
+       content = function(con) {
+         write.csv(pldata, con)
+       }
+     )
 }
 
 # Run the application 
